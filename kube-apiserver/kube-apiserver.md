@@ -5,9 +5,9 @@ kube-apiserver 源码分析
 # 约定
         本文研究的版本是：kubernetes v1.8.0-alpha.0.450+574a6cab2ceada-dirty，后续可能会相应的更新版本。
 # 目录
-        1.[命令行参数](/flag/flag.md)
-        2.[日志](/log/log.md)
-        3.[运行服务器](/run/run.md)
+1.[命令行参数](/flag/flag.md)
+2.[日志](/log/log.md)
+3.[运行服务器](/run/run.md)
 # 参考文献
-        [1](https://blog.openshift.com/kubernetes-deep-dive-api-server-part-1/)"Introducing the API Server"
-        [2](https://blog.openshift.com/kubernetes-deep-dive-api-server-part-2/)"storage"
+[1](https://blog.openshift.com/kubernetes-deep-dive-api-server-part-1/)"Introducing the API Server"
+[2](https://blog.openshift.com/kubernetes-deep-dive-api-server-part-2/)"storage"
