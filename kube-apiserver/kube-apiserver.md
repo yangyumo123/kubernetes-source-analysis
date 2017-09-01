@@ -12,4 +12,5 @@ kube-apiserver是kubernetes中对象的CRUD & watch的HTTP/RESTful服务端。�
 * [https://blog.openshift.com/kubernetes-deep-dive-api-server-part-1/](https://blog.openshift.com/kubernetes-deep-dive-api-server-part-1/)
 * [https://blog.openshift.com/kubernetes-deep-dive-api-server-part-2/](https://blog.openshift.com/kubernetes-deep-dive-api-server-part-2/)
 
-[返回README.md](../README.md)   [下一页](/flag/flag.md)
+-----------------------------------------------------------
+[[返回README.md]](../README.md)
