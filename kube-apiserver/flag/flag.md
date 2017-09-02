@@ -5,7 +5,9 @@ flag 命令行参数
 
 kubernetes中使用两种flag包：flag（Go原生包）和github.com/spf13/pflag。最终合并成pflag包中的CommandLine。
 
-Go语言中全局const、全局var和init函数都是在main函数之前执行的，而且是按照import包的顺序执行全局const、全局var和init函数。CommandLine全局变量就是在main函数之前定义的，除此之外，在kubernetes中还有很多结构体、map等都是在main函数之前执行的。本文并不详细介绍这部分内容，我在远程调试过程中跟踪了包括全局var、init函数和main函数在内的1500多个断点，放在参考文献[[remote debug kubernetes]](../../reference/remote-debug/remote-debug.md/)中，感兴趣的同事可以了解一下。
+Go语言中全局const、全局var和init函数都是在main函数之前执行的，而且是按照import包的顺序执行全局const、全局var和init函数。CommandLine全局变量就是在main函数之前定义的。
+
+我在远程调试中跟踪了包括全局var、init函数和main函数在内的1500多个断点，放在参考文献[[remote debug kubernetes]](../../reference/remote-debug/remote-debug.md/)中，感兴趣的同事可以了解一下。
 
 ## 约定
 本文注释中的使用"flag=默认值"的表示法。例如，"--allow-privileged=false"，表示AllowPrivileged字段对应的flag是"--allow-privileged"，默认值是false。其实实际的flag应该是"-allow-privileged"，为了简便，我们写作"--allow-privileged"。

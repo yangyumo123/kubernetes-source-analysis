@@ -4,10 +4,7 @@
 按照调试执行顺序编写.go文件，每个.go文件只列出调试能走到的全局var和init函数。
 
 ## 调试过程
-初始化k8s.io/kubernetes/vendor/github.com/golang/glog，该包有2个文件：
-
-    k8s.io/kubernetes/vendor/github.com/golang/glog/glog.go
-    k8s.io/kubernetes/vendor/github.com/golang/glog/glog_file.go
+**初始化k8s.io/kubernetes/vendor/github.com/golang/glog**
 
 k8s.io/kubernetes/vendor/github.com/golang/glog/glog.go
 
@@ -77,10 +74,10 @@ k8s.io/kubernetes/vendor/github.com/golang/glog/glog_file.go
         userName = strings.Replace(userName, `\`,"_",-1)
     }
 
-————————————————————————————————————————————————————————————————————————————————————————————————————————
-初始化k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/runtime，该包有1个文件：
 
-    k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/runtime/runtime.go
+——————————————————————————————————————————————————————————————————————————————————————————————————————
+
+**初始化k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/runtime**
 
 k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/runtime/runtime.go
 
@@ -97,9 +94,7 @@ k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/runtime/runtime.go
     //    OnError方法控制日志打印频率不能超过1ms，如果超过1ms，会sleep直到1ms。
 
 ________________________________________________________________________________________________________
-初始化k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/wait，该包有1个文件：
-
-    k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/wait/wait.go
+**初始化k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/wait**
 
 k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/wait/wait.go
 
@@ -107,7 +102,7 @@ k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/wait/wait.go
     var ErrWaitTimeout = errors.New("timed out waiting for the condition")  // ErrWaitTimeout 超时错误。
 
 ________________________________________________________________________________________________________
-初始化k8s.io/kubernetes/vendor/github.com/spf13/pflag/flag.go
+**初始化k8s.io/kubernetes/vendor/github.com/spf13/pflag/flag.go**
 
 k8s.io/kubernetes/vendor/github.com/spf13/pflag/flag.go
 
@@ -115,9 +110,7 @@ k8s.io/kubernetes/vendor/github.com/spf13/pflag/flag.go
     var CommandLine = NewFlagSet(os.Args[0], ExitOnError)        //这里的CommandLine是spf13包里的FlagSet
 
 ________________________________________________________________________________________________________
-初始化k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/logs，该包有1个文件：
-
-    k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/logs/logs.go
+**初始化k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/logs**
 
 k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/logs/logs.go
 
@@ -131,7 +124,7 @@ k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/logs/logs.go
     }
 
 ________________________________________________________________________________________________________
-初始化k8s.io/kubernetes/vendor/github.com/gogo/protobuf/proto
+**初始化k8s.io/kubernetes/vendor/github.com/gogo/protobuf/proto**
 
 k8s.io/kubernetes/vendor/github.com/gogo/protobuf/proto/decode.go
 

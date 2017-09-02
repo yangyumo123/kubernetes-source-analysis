@@ -8,4 +8,4 @@ remote debug kubernetes
 2. [调试kube-apiserver](../remote-debug/debug-kube-apiserver.md/)
 
 _______________________________________________________________________
-[[返回/kube-apiserver/flag/flag.md]](../../kube-apiserver/kube-apiserver/flag/flag.md/) 
+[[返回/kube-apiserver/flag/flag.md]](../../kube-apiserver/flag/flag.md/) 
