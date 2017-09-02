@@ -5,12 +5,15 @@ ServerRunOptions结构体表示服务器运行参数，用于接收flag参数。
 
 ## 1. 数据结构ServerRunOptions
 含义：
+
     服务器的运行参数。
 
 路径：
+
     k8s.kubernetes/cmd/kube-apiserver/app/options/options.go
 
 定义：
+
     type ServerRunOptions struct {
         GenericServerRunOptions     *genericoptions.ServerRunOptions                //服务器通用的运行参数
         Etcd                        *genericoptions.EtcdOptions                     //etcd相关参数
