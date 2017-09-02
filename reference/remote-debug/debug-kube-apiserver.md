@@ -74,8 +74,7 @@ k8s.io/kubernetes/vendor/github.com/golang/glog/glog_file.go
         userName = strings.Replace(userName, `\`,"_",-1)
     }
 
-
-——————————————————————————————————————————————————————————————————————————————————————————————————————
+________________________________________________________________________
 
 **初始化k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/runtime**
 
@@ -305,6 +304,84 @@ k8s.io/kubernetes/vendor/github.com/gogo/protobuf/proto/timestamp_gogo.go
     func (m *timestamp) Reset() {*m = timestamp{}}
     func (*timestamp) ProtoMessage(){}
     func (*timestamp) String() string{return "timestamp<string>"}
+
+___________________________________________________________________________________
+**初始化k8s.io/kubernetes/vendor/k8s.io/apimachineray/pkg/runtime/schema**
+
+k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/schema/generated.pb.go
+    funt init(){
+        proto.RegisterFile("k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/schema/generated.proto", fileDescriptorGenerated)
+    }
+
+_____________________________________________________________________________________
+**初始化k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/conversion**
+
+k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/conversion/converter.go
+    var stringType = reflect.TypeOf("")
+
+_____________________________________________________________________________________
+**初始化k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/errors**
+
+k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/errors/errors.go
+    var ErrPreconditionViolated = errors.New("precondition is violated")
+
+____________________________________________________________________________________
+**初始化ks8.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime**
+
+k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/generated.pb.go
+    var(
+        ErrInvalidLengthGenerated = fmt.Errorf("proto: negative length found during unmarshaling")
+        ErrIntOverflowGenerated = fmt.Errorf("proto: integer overflow")
+    )
+    func init(){
+        proto.RegisterType((*RawExtension)(nil), "k8s.io.apimachinery.pkg.runtime.RawExtension")
+        proto.RegisterType((*TypeMeta)(nil), "k8s.io.apimachinery.pkg.runtime.TypeMeta")
+        proto.RegisterType((*Unknown)(nil), "k8s.io.apimachinery.pkg.runtime.Unknown")
+    }
+    func init(){
+        proto.RegisterFile("k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/generated.proto", fileDescriptorGenerated)
+    }
+
+**注意：**
+
+        protobuf是google的一种数据交换格式，类似于JSON，但是比JSON效率更高。protobuf支持多种语言，Go语言提供了"github.com/gogo/protobuf/gogoproto"包用于protobuf的操作。
+        protobuf的正常操作过程是：
+            首先，创建.proto文件，并按照protobuf schema要求编写.proto文件。
+            然后，执行protoc-gen-gogo命令，生成.pb.go，.pb.go文件中包含类型定义和编解码函数等等，供运行时使用。
+        然而，kubernetes并未使用上述操作流程，而是先编写类型定义文件types.go，然后执行脚本，生成.proto文件和.pb.go。这样做是基于一些考虑的：程序员只需要编写Go的类型定义文件，不需要再学习一门新技术-protobuf schema，由kubernetes脚本自动生成.pb.go文件。另外，如果type.go是由.proto文件生成的，那么kubernetes将依赖protobuf schema，耦合性太强，换成由type.go来生成.proto和.pb.go，则kubernetes不依赖于protobuf schema了。
+        关于protobuf的详细介绍请看参考文献。
+
+k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/types.go
+    //TypeMeta：所有顶层对象共享。
+    type TypeMeta struct{
+        APIVersion string `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty" protobuf:"bytes,1,opt,name=apiVersion"`
+        Kindstring `json:"apiVersion,omitempty" yaml:"apiVersion,omitempty" protobuf:"bytes,2,opt,name=Kind"`
+    }
+
+    //RawExtension：支持外部版本扩展。
+    type RawExtension struct{
+        Raw []byte `protobuf:"bytes,1,opt,name=raw"`
+        Object Object `json:"-"`
+    }
+
+    //Unknown：允许未知类型的API对象。可以用来处理来自插件的API对象。
+    type Unknown struct{
+        TypeMeta `json:",inline" protobuf:"bytes,1,opt,name=typeMeta"`
+        // Raw will hold the complete serialized object which couldn't be matched with a registered type. Most likely, nothing should be done with this except for passing it through the system.
+        Raw []byte `protobuf:"bytes,2,opt,name=raw"`
+        // ContentEncoding is encoding used to encode 'Raw' data. Unspecified means no encoding.
+        ContentEncoding string `protobuf:"bytes,3,opt,name=contentEncoding"`
+        // ContentType is serialization method used to serialize 'Raw'. Unspecified means ContentTypeJSON.
+        ContentType string `protobuf:"bytes,4,opt,name=contentType"`
+    }
+
+    //VersionedObjects：解码调用它给调用者提供一种访问解码过程中对象的所有版本信息。
+    type VersionedObjects struct{
+        Objects []Object
+    }
+
+________________________________________________________________________________________
+
 
 
 ## 参考文献
