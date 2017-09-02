@@ -1,4 +1,4 @@
-调试k8s
+调试kube-apiserver
 =================================================================================================
 ## 简介
 按照调试执行顺序编写.go文件，每个.go文件只列出调试能走到的全局var和init函数。
@@ -106,6 +106,6 @@ k8s.io/kubernetes/vendor/github.com/spf13/pflag/flag.go
 
 
 ## 参考文献
-* [bytes.Buffer原理及使用](../Golang/bytes.Buffer.md)
+* [bytes.Buffer原理及使用](/reference/Golang/bytes.Buffer.md)
 _______________________________________________________________________
-[[返回reference/remote-debug.md]](/remote-debug.md) 
+[[返回/reference/remote-debug.md]](/reference/remote-debug/remote-debug.md) 

@@ -53,3 +53,6 @@ bytes.Buffer 源码及用法
 3.其他两种定义方式
     func NewBuffer(buf []byte) *Buffer
     func NewBufferString(s string) *Buffer
+
+___________________________________________________________________________________________________
+[[返回/reference/remote-debug.md]](/reference/remote-debug/debug-kube-apiserver.md) 

@@ -11,7 +11,7 @@
      注意：需要在包含main的.go文件所在目录下执行上面指令。例如：在/root/mygo/src/k8s.io/kubernetes/cmd/kube-apiserver下执行。
 
 4.在本地vscode中编辑launch.json
-![launch.png](/launch.png/)
+![launch.png](/reference/remote-debug/launch.png/)
 
 **注意**：
 remotePath：指远程Linux服务器上kubernetes源码中main所在的.go文件
@@ -21,4 +21,4 @@ program：   指本地windows中kubernetes源码中main所在的.go文件
 args：      指命令行参数
 
 _______________________________________________________________________
-[[返回reference/remote-debug.md]](/remote-debug.md) 
+[[返回reference/remote-debug.md]](/reference/remote-debug/remote-debug.md) 
