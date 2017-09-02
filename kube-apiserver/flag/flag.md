@@ -13,10 +13,10 @@ Go语言中全局const、全局var和init函数都是在main函数之前执行�
 本文注释中的使用"flag=默认值"的表示法。例如，"--allow-privileged=false"，表示AllowPrivileged字段对应的flag是"--allow-privileged"，默认值是false。其实实际的flag应该是"-allow-privileged"，为了简便，我们写作"--allow-privileged"。
 
 ## 目录
-1. [数据结构ServerRunOptions]()
-2. [创建ServerRunOptions对象]()
-3. [添加Flag到FlagSet中]()
-4. [初始化Flag]()
+1. [数据结构ServerRunOptions](./serverrunoptions.md)
+2. [创建ServerRunOptions对象](./new-serverrunoptions.md)
+3. [添加Flag到FlagSet中](./add-flags.md)
+4. [初始化Flag](./init-flags.md)
 
 ## 参考文献
 * [[remote debug kubernetes]](../../reference/remote-debug/remote-debug.md/)
