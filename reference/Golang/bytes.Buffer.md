@@ -44,16 +44,16 @@ bytes.Buffer 源码及用法
     }
 
 ## bytes.Buffer的使用：
-1. 创建Buffer缓冲器
+### 1. 创建Buffer缓冲器
 
     var b bytes.Buffer                       //直接定义一个Buffer变量，而不用初始化
     //b1:=new(bytes.Buffer)                  //直接使用new初始化，可以直接使用
 
-2. 写缓冲区
+### 2. 写缓冲区
 
     b.Write([]byte("Hello "))                //可以直接使用
 
-3. 其他两种定义方式
+### 3. 其他两种定义方式
 
     func NewBuffer(buf []byte) *Buffer
     func NewBufferString(s string) *Buffer
