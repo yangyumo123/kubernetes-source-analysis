@@ -95,19 +95,20 @@ ServerRunOptions结构体表示服务器运行参数，用于接收flag参数。
 
 1. DefaultFeatureGate - 共享的全局特征开关。
 
-    //路径：k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/feature/feature_gate.go
-    var DefaultFeatureGate FeatureGate = NewFeatureGate()
+        // 路径：k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/feature/feature_gate.go
 
-    // FeatureGate接口用于解析和存储flag："--feature-gates"。
-    type FeatureGate interface{
-        AddFlag(fs *pflag.FlagSet)                                //重点关注AddFlag方法，该方法把flag"--feature-gates"注册的命令行FlagSet中。
-        Set(value string) error
-        Enabled(key Feature) bool
-        Add(features map[Feature]FeatureSpec) error               //Add方法往DefaultFeatureGate.known中增加feature。
-        KnownFeatures() []string
-    }
+        var DefaultFeatureGate FeatureGate = NewFeatureGate()
 
-    //创建featureGate结构体。featureGate实现了FeatureGate接口，这里就不列出FeatureGate的所有方法了。
+        // FeatureGate接口用于解析和存储flag："--feature-gates"。
+        type FeatureGate interface{
+            AddFlag(fs *pflag.FlagSet)                                //重点关注AddFlag方法，该方法把flag"--feature-gates"注册的命令行FlagSet中。
+            Set(value string) error
+            Enabled(key Feature) bool
+            Add(features map[Feature]FeatureSpec) error               //Add方法往DefaultFeatureGate.known中增加feature。
+            KnownFeatures() []string
+        }
+
+    // 创建featureGate结构体。featureGate实现了FeatureGate接口，这里就不列出FeatureGate的所有方法了。
     func NewFeatureGate() *featureGate{
         f := &featureGate{
             //AllAlpha是默认feature gate，会被覆盖。
@@ -149,7 +150,7 @@ ServerRunOptions结构体表示服务器运行参数，用于接收flag参数。
 
 2. init()初始化，往DefaultFeatureGate.known中增加feature。
 
-    //k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/features/kube-features.go
+    // k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/features/kube-features.go
     func init(){
         utilfeature.DefaultFeatureGate.Add(defaultKubernetesFeatureGates)
     }
@@ -157,9 +158,9 @@ ServerRunOptions结构体表示服务器运行参数，用于接收flag参数。
         StreamingProxyRedirects: {Default: true, PreRelease: utilfeature.Beta},
         AdvancedAuditing: {Default: false, PreRelease: utilfeature.Alpha},
     }
-    //k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/feature/feature_gate.go
-    //Add的目的是往known中增加feature gate。
-    //如果已经执行了AddFlag，则closed被设置为true，再执行Add会错误退出。Add增加重复选项时值必须相同，否则错误退出。
+    // k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/feature/feature_gate.go
+    // Add的目的是往known中增加feature gate。
+    // 如果已经执行了AddFlag，则closed被设置为true，再执行Add会错误退出。Add增加重复选项时值必须相同，否则错误退出。
     func (f *featureGate) Add(features map[string]FeatureSpec) error{
         if f.closed{
             return fmt.Errorf("cannot add a feature gate after adding it to the flag set")
@@ -176,7 +177,7 @@ ServerRunOptions结构体表示服务器运行参数，用于接收flag参数。
         return nil
     }
 
-    //k8s.io/kubernetes/pkg/features/kube_features.go
+    // k8s.io/kubernetes/pkg/features/kube_features.go
     func init(){
         utilfeature.DefaultFeatureGate.Add(defaultKubernetesFeatureGates)
     }
