@@ -96,7 +96,6 @@ ServerRunOptions结构体表示服务器运行参数，用于接收flag参数。
 1. DefaultFeatureGate - 共享的全局特征开关。
 
         // 路径：k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/feature/feature_gate.go
-
         var DefaultFeatureGate FeatureGate = NewFeatureGate()
 
         // FeatureGate接口用于解析和存储flag："--feature-gates"。
@@ -108,137 +107,139 @@ ServerRunOptions结构体表示服务器运行参数，用于接收flag参数。
             KnownFeatures() []string
         }
 
-    // 创建featureGate结构体。featureGate实现了FeatureGate接口，这里就不列出FeatureGate的所有方法了。
-    func NewFeatureGate() *featureGate{
-        f := &featureGate{
-            //AllAlpha是默认feature gate，会被覆盖。
-            known: map[string]FeatureSpec{
-                "AllAlpha": {Default: false, PreRelease: Alpha},
-            },
-            special: map[string]func(f *featureGate, val bool){
-                "AllAlpha": setUnsetAlphaGates,
+        // 创建featureGate结构体。featureGate实现了FeatureGate接口，这里就不列出FeatureGate的所有方法了。
+        func NewFeatureGate() *featureGate{
+            f := &featureGate{
+                //AllAlpha是默认feature gate，会被覆盖。
+                known: map[string]FeatureSpec{
+                   "AllAlpha": {Default: false, PreRelease: Alpha},
+                },
+                special: map[string]func(f *featureGate, val bool){
+                    "AllAlpha": setUnsetAlphaGates,
+                }
+                enabled: map[string]bool{},
             }
-            enabled: map[string]bool{},
+            return f
         }
-        return f
-    }
 
-    type featureGate struct{
-        known   map[string]FeatureSpec
-        special map[string]func(*featureGate, bool)               //special的作用是什么？
-        enabled map[string]bool                                   //enabled的作用是什么？
-        closed  bool                                              //当调用AddFlag时，设置为true。Add判断为true时，会错误退出。注意：初始化不是go-routine安全，查询是go-routine安全的。
-    }
-    type FeatureSpec struct{
-        Default bool
-        PreRelease string
-    }
-    func setUnsetAlphaGates(f *featureGate, val bool){
-        for k,v := range f.known {
-            if v.PreRelease == Alpha{
-                if _, found := f.enabled[k]; !found{
-                    f.enabled[k] = val
+        type featureGate struct{
+            known   map[string]FeatureSpec
+            special map[string]func(*featureGate, bool)               //special的作用是什么？
+            enabled map[string]bool                                   //enabled的作用是什么？
+            closed  bool                                              //当调用AddFlag时，设置为true。Add判断为true时，会错误退出。注意：初始化不是go-routine安全，查询是go-routine安全的。
+        }
+        type FeatureSpec struct{
+            Default bool
+            PreRelease string
+        }
+        func setUnsetAlphaGates(f *featureGate, val bool){
+            for k,v := range f.known {
+                if v.PreRelease == Alpha{
+                    if _, found := f.enabled[k]; !found{
+                        f.enabled[k] = val
+                    }
                 }
             }
         }
-    }
-    const(
-        Alpha = "ALPHA"
-        Beta  = "BETA"
-        GA    = ""
-    )
+        const(
+            Alpha = "ALPHA"
+            Beta  = "BETA"
+            GA    = ""
+        )
 
 2. init()初始化，往DefaultFeatureGate.known中增加feature。
 
-    // k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/features/kube-features.go
-    func init(){
-        utilfeature.DefaultFeatureGate.Add(defaultKubernetesFeatureGates)
-    }
-    var defaultkubenetesFeatureGates = map[string]utilfeature.FeatureSpec{
-        StreamingProxyRedirects: {Default: true, PreRelease: utilfeature.Beta},
-        AdvancedAuditing: {Default: false, PreRelease: utilfeature.Alpha},
-    }
-    // k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/feature/feature_gate.go
-    // Add的目的是往known中增加feature gate。
-    // 如果已经执行了AddFlag，则closed被设置为true，再执行Add会错误退出。Add增加重复选项时值必须相同，否则错误退出。
-    func (f *featureGate) Add(features map[string]FeatureSpec) error{
-        if f.closed{
-            return fmt.Errorf("cannot add a feature gate after adding it to the flag set")
+        // k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/features/kube-features.go
+        func init(){
+            utilfeature.DefaultFeatureGate.Add(defaultKubernetesFeatureGates)
         }
-        for name, spec := range features{
-            if existingSpec, found:=f.known[name]; found{
-                if existingSpec == spec{
-                    continue
-                }
-                return fmt.Errorf("feature gate %q with different spec already exists: %v", name, existingSpec)
+
+        var defaultkubernetesFeatureGates = map[string]utilfeature.FeatureSpec{
+            StreamingProxyRedirects: {Default: true, PreRelease: utilfeature.Beta},
+            AdvancedAuditing: {Default: false, PreRelease: utilfeature.Alpha},
+        }
+
+        // k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/feature/feature_gate.go
+        // Add的目的是往known中增加feature gate。
+        // 如果已经执行了AddFlag，则closed被设置为true，再执行Add会错误退出。Add增加重复选项时值必须相同，否则错误退出。
+        func (f *featureGate) Add(features map[string]FeatureSpec) error{
+            if f.closed{
+                return fmt.Errorf("cannot add a feature gate after adding it to the flag set")
             }
-            f.known[name] = spec
+            for name, spec := range features{
+                if existingSpec, found:=f.known[name]; found{
+                    if existingSpec == spec{
+                        continue
+                    }
+                    return fmt.Errorf("feature gate %q with different spec already exists: %v", name, existingSpec)
+                }
+                f.known[name] = spec
+            }
+            return nil
         }
-        return nil
-    }
 
-    // k8s.io/kubernetes/pkg/features/kube_features.go
-    func init(){
-        utilfeature.DefaultFeatureGate.Add(defaultKubernetesFeatureGates)
-    }
-    var defaultKubernetesFeatureGates = map[string]utilfeature.FeatureSpec{
-        ExternalTrafficLocalOnly: {Default: true, PreRelease: utilfeature.GA},
-        AppArmor: {Default: true, PreRelease: utilfeature.Beta},
-        DynamicKubeletConfig: {Default: false, PreRelease: utilfeature.Alpha},
-        DynamicVolumeProvisioning: {Default: true, PreRelease: utilfeature.Alpha},
-        ExperimentalHostUserNamespaceDefaultingGate: {Default: false, PreRelease: utilfeature.Beta},
-        ExperimentalCriticalPodAnnotation: {Default: false, PreRelease: utilfeature.Alpha},
-        AffinityInAnnotations: {Default: false, PreRelease: utilfeature.Alpha},
-        Accelerators: {Default: false, PreRelease: utilfeature.Alpha},
-        TaintBasedEvictions: {Default: false, PreRelease: utilfeature.Alpha},
-        RotateKubeletServerCertificate: {Default: false, PreRelease: utilfeature.Alpha},
-        RotateKubeletClientCertificate: {Default: false, PreRelease: utilfeature.Alpha},
-        PersistentLocalVolumes: {Default: false, PreRelease: utilfeature.Alpha},
-        LocalStorageCapacityIsolation: {Default: false, PreRelease: utilfeature.Alpha}
+        // k8s.io/kubernetes/pkg/features/kube_features.go
+        func init(){
+            utilfeature.DefaultFeatureGate.Add(defaultKubernetesFeatureGates)
+        }
+        var defaultKubernetesFeatureGates = map[string]utilfeature.FeatureSpec{
+            ExternalTrafficLocalOnly: {Default: true, PreRelease: utilfeature.GA},
+            AppArmor: {Default: true, PreRelease: utilfeature.Beta},
+            DynamicKubeletConfig: {Default: false, PreRelease: utilfeature.Alpha},
+            DynamicVolumeProvisioning: {Default: true, PreRelease: utilfeature.Alpha},
+            ExperimentalHostUserNamespaceDefaultingGate: {Default: false, PreRelease: utilfeature.Beta},
+            ExperimentalCriticalPodAnnotation: {Default: false, PreRelease: utilfeature.Alpha},
+            AffinityInAnnotations: {Default: false, PreRelease: utilfeature.Alpha},
+            Accelerators: {Default: false, PreRelease: utilfeature.Alpha},
+            TaintBasedEvictions: {Default: false, PreRelease: utilfeature.Alpha},
+            RotateKubeletServerCertificate: {Default: false, PreRelease: utilfeature.Alpha},
+            RotateKubeletClientCertificate: {Default: false, PreRelease: utilfeature.Alpha},
+            PersistentLocalVolumes: {Default: false, PreRelease: utilfeature.Alpha},
+            LocalStorageCapacityIsolation: {Default: false, PreRelease: utilfeature.Alpha}
 
-        // inherited features from generic apiserver, relisted here to get a conflict if it is changed unintentionally on either side:
-        StreamingProxyRedirects: {Default: true, PreRelease: utilfeature.Beta},
-        genericfeatures.AdvancedAuditing: {Default: false, PreRelease: utilfeature.Alpha},
-    }
+            // inherited features from generic apiserver, relisted here to get a conflict if it is changed unintentionally on either side:
+            StreamingProxyRedirects: {Default: true, PreRelease: utilfeature.Beta},
+            genericfeatures.AdvancedAuditing: {Default: false, PreRelease: utilfeature.Alpha},
+        }
 
 3. 把flag"--feature-gates"加入命令行FlagSet中
 
-    调用顺序如下：
-    //k8s.io/kubernetes/cmd/kube-apiserver/apiserver.go
-    func main(){
-        ...
-        s:=options.NewServerRunOptions()
-        s.AddFlags(pflag.CommandLine)
-        ...
-    }
-    //k8s.io/kubernetes/cmd/kube-apiserver/app/options/options.go
-    func (s *ServerRunOptions) AddFlags(fs *pflag.FlagSet){
-        s.GenericServerRunOptions.AddUniversalFlags(fs)
-        ...
-    }
-    //k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/server/options/server_run_options.go
-    func (s *ServerRunOptions) AddUniversalFlags(fs *pflag.FlagSet){
-        ...
-        utilfeature.DefaultFeatureGate.AddFlag(fs)
-    }
-    //k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/feature/feature_gate.go
-    func (f *featureGate) AddFlag(fs *pflag.FlagSet){
-        f.closed = true
-        known:=f.KnownFeatures()
-        fs.Var(f,flagName, "A set of key=value pairs that describe feature gates for alpha/experimental features. Options are:\n"+strings.Join(known, "\n"))
-    }
-    func (f *featureGate) KnownFeatures() []string{
-        var known []string
-        for k,v := range f.known{
-            pre := ""
-            if v.PreRelease != GA{
-                pre = fmt.Sprintf("%s - ", v.PreRelease)
-            }
-            known = append(known, fmt.Sprintf("%s=true|false (%default=%t)", k, pre, v.Default))
+        调用顺序如下：
+        //k8s.io/kubernetes/cmd/kube-apiserver/apiserver.go
+        func main(){
+            ...
+            s:=options.NewServerRunOptions()
+            s.AddFlags(pflag.CommandLine)
+            ...
         }
-        sort.Strings(known)
-        return known
-    }
+        //k8s.io/kubernetes/cmd/kube-apiserver/app/options/options.go
+        func (s *ServerRunOptions) AddFlags(fs *pflag.FlagSet){
+            s.GenericServerRunOptions.AddUniversalFlags(fs)
+            ...
+        }
+        //k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/server/options/server_run_options.go
+        func (s *ServerRunOptions) AddUniversalFlags(fs *pflag.FlagSet){
+            ...
+            utilfeature.DefaultFeatureGate.AddFlag(fs)
+        }
+        //k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/feature/feature_gate.go
+        func (f *featureGate) AddFlag(fs *pflag.FlagSet){
+            f.closed = true
+            known:=f.KnownFeatures()
+            fs.Var(f,flagName, "A set of key=value pairs that describe feature gates for alpha/experimental features. Options are:\n"+strings.Join(known, "\n"))
+        }
+        func (f *featureGate) KnownFeatures() []string{
+            var known []string
+            for k,v := range f.known{
+                pre := ""
+                if v.PreRelease != GA{
+                    pre = fmt.Sprintf("%s - ", v.PreRelease)
+                }
+                known = append(known, fmt.Sprintf("%s=true|false (%default=%t)", k, pre, v.Default))
+            }
+            sort.Strings(known)
+            return known
+        }
 
 
 ### 1.2 Etcd字段
