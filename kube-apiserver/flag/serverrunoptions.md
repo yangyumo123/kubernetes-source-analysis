@@ -243,6 +243,26 @@ ServerRunOptions结构体表示服务器运行参数，用于接收flag参数。
 
 
 ### 1.2 Etcd字段
+含义：
+
+    etcd相关配置。
+
+路径：
+
+    k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/server/options/etcd.go
+
+定义：
+
+    type EtcdOptions struct{
+        StorageConfig                    storagebackend.Config   //后端存储（etcd）的配置
+        EncryptionProviderConfigFilepath string                  //flag："--experimental-encryption-provider-config="。该配置文件供加密提供商用来在etcd中存储secrets。
+        EtcdServersOverrides             []string                //flag："--etcd-servers-overrides=[]"。etcd servers覆盖的每个资源，逗号分隔，格式：group/resource#servers，其中servers格式：http://ip:port。
+        DefaultStorageMediaType          string                  //flag："--storage-media-type=application/vnd.kubernetes.protobuf"。etcd默认存储MIME类型。
+        DeleteCollectionWorkers          int                     //flag："--delete-collection-workers=1"。调用DeleteCollection方法启动的线程数量，用于提高namespace清理速度。
+        EnableGarbageCollection          bool                    //flag："--enable-garbage-collector=true"。是否打开gc，必须和kube-controller-manager相应的flag同步。
+        EnableWatchCache                 bool                    //flag："--watch-cache=true"。是否打开所有对象的watch cache功能。
+        DefaultWatchCacheSize            int                     //无flag。默认的watch cache大小。此处默认值：100。单位是MB。
+    }
 
 
 
