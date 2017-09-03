@@ -264,7 +264,103 @@ ServerRunOptions结构体表示服务器运行参数，用于接收flag参数。
         DefaultWatchCacheSize            int                     //无flag。默认的watch cache大小。此处默认值：100。单位是MB。
     }
 
+#### 1.2.1 StorageConfig
+含义：
 
+    etcd后端存储的配置参数。
+
+路径：
+
+    k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/storage/storagebackend/config.go
+
+定义：
+
+    type Config struct{
+        Type                     string                //flag："--storage-backend="。后端存储（storage backend）类型，例如："etcd2"，"etcd3"，默认""表示"etcd3"。
+        Prefix                   string                //flag："--etcd-prefix=/registry"。etcd中所有资源路径的前缀。
+        ServerList               []string              //flag："--etcd-servers=[]"。与apiserver连接的etcd server列表，格式：scheme://ip:port，逗号分隔。该参数通过命令行传入，必须被设置。
+        KeyFile                  string                //flag："--etcd-keyfile="。apiserver和etcd安全连接的TLS秘钥文件（包含公钥和私钥）。
+        CertFile                 string                //flag："--etcd-certfile="。apiserver和 etcd安全连接的TLS证书文件。
+        CAFile                   string                //flag："--etcd-cafile="。apiserver和 etcd安全连接的TLS CA证书文件。
+        Quorum                   bool                  //flag："--etcd-quorum-read=false"。设置read quorum。
+        DeserializationCacheSize int                   //此处flag："--deseriazation-cache-size=0"。反序列化json对象的缓存大小，当前仅支持etcd2。一旦使用protobuf，就去除这个缓存。后面可能会修改该默认值，即如果默认值为0，则根据TargetRAMMB进行设置，或者通过命令行flag传入。
+        Codec                    runtime.Codec         //无falg。
+        Copier                   runtime.ObjectCopier  //无falg。
+        Transformer              value.Transformer     //无falg。允许数据在持久化到etcd之前进行转换。
+    }
+
+1. Quorum
+
+    Quorum机制是解决分布式系统的数据一致性问题的一种方法。为了保证分布式系统的可靠性，对于数据的存储采用多份数据副本，也就是其中一个节点上读取数据失败了那么可以转向另外一个存有相同数据副本的节点读取返回给用户。对于写操作，要保证所有副本都更新成功才给用户返回信息，用户才可以读取。这种方案存在的问题是：写操作时延较大，写并发也有很大影响。能否有一种方案可以不更新完全部数据，就能保证用户读取到更新后的数据呢？Quorum就是一种解决方案。
+    先介绍一下抽屉模型：有两个抽屉，一个抽屉装了2个红苹果，另一个抽屉装了2个青苹果，如果拿取3个苹果，必有1个是红苹果。
+    如果抽屉模型中的红苹果代表已更新的数据，青苹果代表未更新的数据。可以看出不需要更新完全部数据就可以取出已更新的数据。Quorum机制的实质是将写的部分负载转移给了读负载，读多个副本使得写不会过于劳累。
+    下面介绍Quorum机制是怎么解决读写负载均衡的：
+    假设总共有N个数据副本，其中k个已更新，N-k个未更新，那么任意读取N-k+1个数据就必定有1个数据是更新后的，只要取N-k+1中版本最高的数据给用户即可。
+    对于写操作，只需要完成N个副本的更新后，就可以告诉用户操作完成，而不需要全部更新，当然在告诉用户更新完成后，系统内部会慢慢的更新剩余的数据副本，这对用户是透明的。
+    在kubernetes中，默认不使用Qurorum机制。
+
+2. Codec
+
+含义：对象序列化和反序列化。详细内容请看参考文献[[Serializer序列化器]](../../reference/k8s/serializer.md/)
+
+路径：
+
+    k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/interfaces.go
+
+定义：
+
+    type Codec Serializer                      //Codec处理版本对象的序列化和反序列化。Codec类型对象需要实现Serializer接口。
+    type Serializer interface{
+        Encoder
+        Decoder
+    }
+    type Encoder interface{
+        Encode(obj Object, w io.Writer) error  //将对象写到一个流中。如果版本不兼容，或者没有定义conversion，则返回错误。
+    }
+    type Decoder interface{
+        //将data反序列化为对象，使用scheme本来的类型或者提供的defaults类型。返回对象和类型。如果into不为nil，将被用作目的类型，可能会使用它而不是重新分配一个对象。尽管如此，不保证填充这个对象，返回的对象也不保证匹配。如果提供defaults，默认会被用于data。
+        Decode(data []byte, defaults *schema.GroupVersionKind, into Object) (Object, *schema.GroupVersionKind, error)
+    }
+
+3. Copier
+
+     路径：k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/interfaces.go
+     定义：
+//复制对象
+type ObjectCopier interface{
+     //返回对象的精确拷贝，如果拷贝未完成，则返回error。
+     Copy(Object) (Object, error)
+}
+//Scheme中注册的所有API type都必须实现Object接口，因为序列化/反序列化对象需要使用gvk，而Object接口就是提供对象的gvk。
+type Object interface{
+     GetObjectKind() schema.ObjectKind
+}
+//k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/schema/interfaces.go
+type ObjectKind interface{
+     SetGroupVersionKind(kind GroupVersionKind)
+     GroupVersionKind() GroupVersionKind
+}
+//k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/schema/group_version.go
+type GroupVersionKind struct{
+     Group string
+     Version string
+     Kind string
+}
+
+4. Transformer
+
+     Transformer接口允许数据在从后端存储中读取或者存入后端存储中之前进行转换。接口的方法必须能撤销由其它原因导致的转换。
+type Transformer interface{
+     //转换来自后端存储的数据或者返回错误。如果磁盘上对象过期了，则设置stale为true，并且要往etcd中写数据，即使数据内容没有改变。
+     TransformFromStorage(data []byte, context Context) (out []byte, stale bool, err error)
+
+     //转换数据到后端存储或返回错误。
+     TransformToStorage(data []byte, context Context) (out []byte, err error)
+}
+
+
+## 参考文献
+* [[Serializer序列化器]](../../reference/k8s/serializer.md/)
 
 
 _______________________________________________________________________
