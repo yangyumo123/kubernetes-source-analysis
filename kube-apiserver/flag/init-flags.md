@@ -34,6 +34,7 @@
     在main函数执行之前，已经注册了一些Go原生的Flag和pflag包的CommandLine中注册的一些通用Flag，下面就介绍一下这些在init函数中注册的Flag。
 
 定义：
+
     //k8s.io/kubernetes/vendor/github.com/golang/glog/glog.go
     // 这里的flag是go原生flag包
     func init(){
