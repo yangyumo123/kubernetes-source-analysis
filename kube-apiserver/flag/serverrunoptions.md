@@ -298,8 +298,8 @@ ServerRunOptions结构体表示服务器运行参数，用于接收flag参数。
         如果抽屉模型中的红苹果代表已更新的数据，青苹果代表未更新的数据。可以看出不需要更新完全部数据就可以取出已更新的数据。Quorum机制的实质是将写的部分负载转移给了读负载，读多个副本使得写不会过于劳累。
     
         下面介绍Quorum机制是怎么解决读写负载均衡的：
-        假设总共有N个数据副本，其中k个已更新，N-k个未更新，那么任意读取N-k+1个数据就必定有1个数据是更新后的，只要取N-k+1中版本最高的数据给用户即可。
-        对于写操作，只需要完成N个副本的更新后，就可以告诉用户操作完成，而不需要全部更新，当然在告诉用户更新完成后，系统内部会慢慢的更新剩余的数据副本，这对用户是透明的。
+        假设总共有N个数据副本，其中k个已更新，N-k个未更新，那么任意读取N-k+1个数据就必定有1个数据是更新后的，只要取N-k+1中版本最高的数据给用户即可。对于写操作，只需要完成N个副本的更新后，就可以告诉用户操作完成，而不需要全部更新，当然在告诉用户更新完成后，系统内部会慢慢的更新剩余的数据副本，这对用户是透明的。
+        
         在kubernetes中，默认不使用Qurorum机制。
 
 2. Codec
@@ -327,44 +327,118 @@ ServerRunOptions结构体表示服务器运行参数，用于接收flag参数。
 
 3. Copier
 
-     路径：k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/interfaces.go
-     定义：
-//复制对象
-type ObjectCopier interface{
-     //返回对象的精确拷贝，如果拷贝未完成，则返回error。
-     Copy(Object) (Object, error)
-}
-//Scheme中注册的所有API type都必须实现Object接口，因为序列化/反序列化对象需要使用gvk，而Object接口就是提供对象的gvk。
-type Object interface{
-     GetObjectKind() schema.ObjectKind
-}
-//k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/schema/interfaces.go
-type ObjectKind interface{
-     SetGroupVersionKind(kind GroupVersionKind)
-     GroupVersionKind() GroupVersionKind
-}
-//k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/schema/group_version.go
-type GroupVersionKind struct{
-     Group string
-     Version string
-     Kind string
-}
+含义：复制对象。
+
+路径：
+
+    k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/interfaces.go
+
+定义：
+
+    //复制对象
+    type ObjectCopier interface{
+        Copy(Object) (Object, error)                 //返回对象的精确拷贝，如果拷贝未完成，则返回error。
+    }
+
+    //Scheme中注册的所有API type都必须实现Object接口，因为序列化/反序列化对象需要使用gvk，而Object接口就是提供对象的gvk。
+    type Object interface{
+        GetObjectKind() schema.ObjectKind
+    }
+
+    //k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/schema/interfaces.go
+    type ObjectKind interface{
+        SetGroupVersionKind(kind GroupVersionKind)   //设置对象的gvk
+        GroupVersionKind() GroupVersionKind          //获取对象的gvk
+    }
+
+    //k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/schema/group_version.go
+    type GroupVersionKind struct{
+        Group string
+        Version string
+        Kind string
+    }
 
 4. Transformer
 
-     Transformer接口允许数据在从后端存储中读取或者存入后端存储中之前进行转换。接口的方法必须能撤销由其它原因导致的转换。
-type Transformer interface{
-     //转换来自后端存储的数据或者返回错误。如果磁盘上对象过期了，则设置stale为true，并且要往etcd中写数据，即使数据内容没有改变。
-     TransformFromStorage(data []byte, context Context) (out []byte, stale bool, err error)
+含义：
 
-     //转换数据到后端存储或返回错误。
-     TransformToStorage(data []byte, context Context) (out []byte, err error)
-}
+    转换器。
+
+路径：
+
+    k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/interfaces.go
+
+定义：
+
+    //Transformer接口允许数据在从后端存储中读取或者存入后端存储中之前进行转换。接口的方法必须能撤销由其它原因导致的转换。
+    type Transformer interface{
+        TransformFromStorage(data []byte, context Context) (out []byte, stale bool, err error)  //转换来自后端存储的数据或者返回错误。如果磁盘上对象过期了，则设置stale为true，并且要往etcd中写数据，即使数据内容没有改变。
+        TransformToStorage(data []byte, context Context) (out []byte, err error)                //转换数据到后端存储或返回错误。
+    }
+
+### 1.3 SecureServing字段
+含义：
+
+    安全服务器配置参数。
+
+路径：
+
+    k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/server/options/serving.go
+
+定义：
+
+    type SecureServingOptions struct{
+        BindAddress net.IP                       //flag："--bind-address=0.0.0.0"。apiserver安全监听ip，和"--secure-port"一起用。如果空表示接受所有接口（0.0.0.0）。
+        BindPort    int                          //flag："--secure-port=6443"。apiserver监听port。如果为0表示不支持https。
+        ServerCert  GenerableKeyCert             //TLS证书
+        SNICertKeys []utilflag.NamedCertKey      //命名的CertKeys，支持SNI。flag："--tls-sni-cert-key=[]"。解析"certfile,keyfile"和"certfile,keyfile:name,name,name"的flag值。例如："example.crt,example.key"或者"foo.crt,foo.key:*.foo.com,foo.com"。
+    }
+
+#### 1.3.1 ServerCert
+含义：
+
+    TLS证书。
+
+路径：
+
+    k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/server/options/serving.go
+
+定义：
+
+    type GenerableKeyCert struct{
+        CertKey       CertKey                    //证书文件和秘钥文件（包含公钥和私钥）的路径。
+        CACertFile    string                     //CA证书。默认值：""。对应的flag是："--tls-ca-file"。
+        CertDirectory string                     //flag："--cert-dir=/var/run/kubernetes"。证书存放目录。如果设置了"--tls-cert-file"和"--tls-private-key-file"，该参数将被忽略。
+        PairName      string                     //无flag。默认值："apiserver"。和CertDirectory一起使用，决定cert和key的名字。格式：CertDirector/PairName.crt和CertDirector/PairName.key。
+    }
+    type CertKey struct{
+        //如果未提供CertFile和KeyFile，则生成自签名证书和私钥，保存在/var/run/kubernetes目录中。
+        CertFile string                          //证书文件。默认值：""。对应的flag是："--tls-cert-file"。
+        KeyFile  string                          //秘钥文件（包含公钥和私钥）。默认值：""。对应的flag是："--tls-private-key-file"。
+    }
+    
+#### 1.3.2 SNICertKeys
+含义：
+    SNI根据客户端请求的域名不同，会分配不同的证书给客户端。SNI的详细内容请看参考文献[[SNI-TLS原理]](../../reference/crypto/sni-tls.md)
+
+路径：
+
+    k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/flag/namedcertkey_flag.go
+
+定义：
+
+    type NamedCertKey struct{
+        Names             []string      //域名
+        CertFile, KeyFile string        //证书和秘钥
+    }
+
+
+
 
 
 ## 参考文献
 * [[Serializer序列化器]](../../reference/k8s/serializer.md/)
-
+* [[SNI-TLS原理]](../../reference/crypto/sni-tls.md)
 
 _______________________________________________________________________
 [[返回/kube-apiserver/flag/flag.md]](./flag.md)
