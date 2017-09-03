@@ -513,234 +513,306 @@ ServerRunOptions结构体表示服务器运行参数，用于接收flag参数。
 定义：
 
     type AdmissionOptions struct{
-        PluginNames []string                                          //此处flag："--admission-control=[AlwaysAdmit]"。准入控制插件列表，逗号分隔，按顺序执行。
-        ConfigFile string                                                 //flag："--admission-control-config-file="。准入控制配置文件。
-        Plugins *admission.Plugins                                 //无flag。后面会注册很多准入控制插件。
+        PluginNames []string                                //此处flag："--admission-control=[AlwaysAdmit]"。准入控制插件列表，逗号分隔，按顺序执行。
+        ConfigFile  string                                  //flag："--admission-control-config-file="。准入控制配置文件。
+        Plugins     *admission.Plugins                      //无flag。后面会注册很多准入控制插件。
     }
+
     //k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/admission/plugins.go
     type Plugins struct{
-        lock sync.Mutex
+        lock     sync.Mutex
         registry map[string]Factory
     }
-    type Factory func(config io.Reader) (Interface, error)
+    type Factory func(config io.Reader) (Interface, error)  //准入控制插件需要实现Interface接口，即实现Admit和Handles方法。后面还会详细介绍。
 
-//k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/admission/interfaces.go
-//Interface是可插入接口
-type Interface interface{
-     Admit(a Attributes) (err error)                            //基于请求属性的准入控制。
-     Handles(operation Operation) bool                    //如果准入控制器能处理给定的操作，可能是CREATE、UPDATE、DELETE、CONNECT，则返回true。
-}
-type Operation string
-type Attributes interface{
-     GetName() string                                              //请求对象的名字。在CREATE操作中，client可能会忽略这个名字，依靠server产生的名字，此时返回空字符串。
-     GetNamespace() string                                     //请求的namespace。
-     GetResource() schema.GroupVersionResource  //请求的资源。
-     GetSubresource() string                                    //请求的子资源。例如：/pods/foo/status的资源"pods"，子资源是"status"，kind是"Pod"。
-     GetOperation() Operation                                 //执行的操作。
-     GetObject() runtime.Object                               //来自请求的对象。
-     GetOldObject() runtime.Object                         //以存在的对象，仅用于UPDATE。
-     GetKind() schema.GroupVersionKind                 //资源类型。
-     GetUserInfo() user.Info                                     //请求的用户信息
-}
-//k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/schema/group_version.go
-type GroupVersionResource struct{
-     Group string
-     Version string
-     Resource string
-}
-//k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/authentication/user/user.go
-//Info描述已经被系统认证的用户。
-type Info interface{
-     GetName() string                                             //用户名
-     GetUID() string                                                //用户UID
-     GetGroups() []string                                         //用户所在组
-     GetExtra() map[string][]string                           //
-}
+    //k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/admission/interfaces.go
+    //Interface接口实现了准入控制插件所需的操作。
+    type Interface interface{
+        Admit(a Attributes) (err error)                     //基于请求属性的准入控制。
+        Handles(operation Operation) bool                   //如果准入控制器能处理给定的操作，可能是CREATE、UPDATE、DELETE、CONNECT，则返回true。
+    }
+    type Operation string
+    type Attributes interface{
+        GetName()        string                             //请求对象的名字。在CREATE操作中，client可能会忽略这个名字，依靠server产生的名字，此时返回空字符串。
+        GetNamespace()   string                             //请求的namespace。
+        GetResource()    schema.GroupVersionResource        //请求的资源。
+        GetSubresource() string                             //请求的子资源。例如：/pods/foo/status的资源"pods"，子资源是"status"，kind是"Pod"。
+        GetOperation()   Operation                          //执行的操作。
+        GetObject()      runtime.Object                     //来自请求的对象。
+        GetOldObject()   runtime.Object                     //以存在的对象，仅用于UPDATE。
+        GetKind()        schema.GroupVersionKind            //资源类型。
+        GetUserInfo()    user.Info                          //请求的用户信息
+    }
 
-1.8Authentication字段
-     路径：k8s.io/kubernetes/pkg/kubeapiserver/options/authentication.go
-     定义：
-type BuiltInAuthenticationOptions struct{ //11
-     Anonymous *AnonymousAuthenticationOptions
-     AnyToken *AnyTokenAuthenticationOptions
-     BootstrapToken *BootstrapTokenAuthenticationOptions
-     ClientCert *genericoptions.ClientCertAuthenticationOptions
-     Keystone *KeystoneAuthenticationOptions
-     OIDC *OIDCAuthenticationOptions
-     PasswordFile *PasswordFileAuthenticationOptions
-     RequestHeader *genericoptions.RequestHeaderAuthenticationOptions
-     ServiceAccounts * ServiceAccountAuthenticationOptions
-     TokenFile *TokenFileAuthenticationOptions
-     WebHook *WebHookAuthenticationOptions
-}
-type AnonymousAuthenticationOptions struct{
-     Allow bool   //此处flag："--anonymous-auth=true"。是否允许匿名请求apiserver的安全端口。匿名请求是指没有被其他身份验证方法拒绝的请求，apiserver会为这样的请求赋予用户名：system:anonymous和用户group：system:unauthenticated。这个请求将继续流向后面的环节：authorization和admission-control。后面可能会修改该默认值，即如果授权策略模式是AlwaysAllow，则修改该值为false。
-}
-type AnyTokenAuthenticationOptions struct{
-     Allow bool   //flag："--insecure-allow-any-token=false"。如果设置该参数，server将是insecure。运行任意token，并从token "username/group1,group2"中解析用户信息。anytoken为什么还要解析用户信息？
-}
-type BootstrapTokenAuthenticationOptions struct{
-     Allow bool                    //flag："--experimental-bootstrap-token-auth=false"。允许"kube-system" namespace中的"boostrap.kubernetes.io/token"类型secrets 用于TLS bootstrapping认证。
-}
-//k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/server/options/authentication.go
-type ClientCertAuthenticationOptions struct{
-     ClientCA string             //flag："--client-ca-file="。CA证书用于验证客户端证书。
-}
-type KeystoneAuthenticationOptions struct{
-     URL string                   //flag："--experimental-keystore-url="。激活keystore认证插件。
-     CAFile string                //flag："--experimental-keystore-ca-file="。keystore使用的ca证书，用于认证keystore的服务端证书。如果未设置，则使用host的CA。
-}
-type OIDCAuthenticationOptions struct{
-     CAFile string                //flag："--oidc-ca-file="。ca证书用于认证OpenID server证书，如果未设置，则使用host root CA。
-     ClientID string             //flag："--oidc-client-id="。client id用于OpenID连接client。如果设置了"--oidc-issuer-url"，该参数也必须设置。
-     IssuerURL string          //flag："--oidc-issuer-url="。OpenID issuer的URL，仅支持https。如果设置了，用于验证OIDC JSON Web Token（JWT）。
-     UsernameClaim string //flag："--oidc-username-claim=sub"。OpenID claim用作用户名。注意，除了默认值（'sub'）之外的claim并不保证是唯一和不可变的。这个参数是实验性的。
-     GroupsClaim string     //flag："--oidc-groups-claim="。用户组。这个参数是实验性的。
-}
-type PasswordFileAuthenticationOptions struct{
-     BasicAuthFile string    //flag："--basic-auth-file="。如果设置了，允许使用http basic认证服务安全端口。 
-}
-//k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/server/options/authentication.go
-type RequestHeaderAuthenticationOptions struct{
-     UsernameHeaders []string      //flag："--requestheader-username-headers=[]"。检查用户名的请求头列表。X-Remote-User是常量。
-     GroupHeaders []string            //flag："--requestheader-group-headers=[]"。检查组的请求头列表。建议X-Remote-Group。
-     ExtraHeaderPrefixes []string   //flag："--requestheader-extra-headers-prefix=[]"。检查请求头前缀。建议X-Remote-Extra。
-     ClientCAFile string                  //flag："--requestheader-client-ca-file="。CA证书用于认证客户端证书。执行于"--requestheader-username-headers"指定的用户名认证之前。
-     AllowedNames []string           //flag："--requestheader-allowed-names=[]"。客户端常用名称列表，允许提供"--requestheader-username-headers"指定的用户名。如果为空，任何客户端证书认证有效。
-}
-type ServiceAccountAuthenticationOptions struct{
-     KeyFiles []string     //此处flag："--service-account-key-file=[]"。keyfile验证serviceaccount token。后面可能会修改该默认值，即如果未设置，则使用"--tls-private-key-file"。
-     Lookup bool         //flag："--service-account-lookup=true"。如果为true，则serviceaccount token作为认证部分存在于etcd中。
-}
-type TokenFileAuthenticationOptions struct{
-     TokenFile string    //flag："--token-auth-file="。token认证访问安全端口使用的token文件。
-}
-type WebHookAuthenticationOptions struct{
-     ConfigFile string               //flag："--authentication-token-webhook-config-file="。webhook配置，以kubeconfig格式的token认证。API server将查询远程访问以确定bearer token的身份认证。
-     CacheTTL time.Duration   //flag："--authentication-token-webhook-cache-ttl=2m0s"。从webhook token身份认证器缓存响应的时间。
-}
+    //k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/schema/group_version.go
+    type GroupVersionResource struct{
+        Group    string
+        Version  string
+        Resource string
+    }
 
+    //k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/authentication/user/user.go
+    //Info描述已经被系统认证的用户。
+    type Info interface{
+        GetName()   string                                  //用户名
+        GetUID()    string                                  //用户UID
+        GetGroups() []string                                //用户所在组
+        GetExtra()  map[string][]string                     
+    }
 
-1.9Authorization字段
-     路径：k8s.io/kubernetes/pkg/kubeapiserver/options/authorization.go
-     定义：
-type BuildInAuthorizationOptions struct{
-     Mode string                                                        //flag："--authorization-mode=AlwaysAllow"。授权插件列表。逗号分隔。
-     PolicyFile string                                                   //flag："--authorization-policy-file="。授权策略文件，csv格式，和"--authorization-mode=ABAC"一起使用。
-     WebhookConfigFile string                                   //flag："--authorization-webhook-config-file="。webhook配置文件，kubeconfig格式，和"--authorization-mode=Webhook"一起使用。
-     WebhookCacheAuthorizedTTL time.Duration      //flag："--authorization-webhook-cache-authorized-ttl=5m0s"。从webhook授权器缓存授权的响应的时间。
-     WebhookCacheUnauthorizedTTL time.Duration  //flag："--authorization-webhook-cache-unauthorized-ttl=30s"。从webhook授权器缓存未授权的响应的时间。
-}
+### 1.8 Authentication字段
+含义：
 
+    认证参数。
 
-1.10CloudProvider字段
-     路径：k8s.io/kubernetes/pkg/kubeapiserver/options/cloudprovider.go
-     定义：
-type CloudProviderOptions struct{
-     CloudConfigFile string           //flag："--cloud-config="。cloud provider配置文件。空表示没有配置文件。
-     CloudProvider string             //flag："--cloud-provider="。cloud provider。空表示没有provider。
-}
+路径：
 
-1.11StorageSerialization字段
-     含义：每个groupversion中存储的resource。具体怎么使用？
-     路径：k8s.io/kubernetes/pkg/kubeapiserver/options/storage_versions.go
-     定义：
-type StorageSerializationOptions struct{
-     //格式：group1/version1,gourp2/version2,...。如果对象从一个group移到另一个group，可能指定格式：group1=group2/v1beta1,group3/v1beta1.
-     //默认来自KUBE_API_VERSIONS环境变量的所有已经注册组的所有首选版本。
-     //flag："--storage-versions=admission.k8s.io/v1alpha1,admissionregistration.k8s.io/v1alpha1,apps/v1beta1,authentication.k8s.io/v1,authorization.k8s.io/v1,autosacling/v1,batch/v1,certificates.k8s.io/v1beta1,componentconfig/v1alpha1,extensions/v1beta1,federation/v1beta1,imagepolicy.k8s.io/v1alpha1,networking.k8s.io/v1,policy/v1beta1,rbac.authorization.k8s.io/v1beta1,settings.k8s.io/v1alpha1,storage.k8s.io/v1,v1 "。
-     StorageVersions string
-     DefaultStorageVersions string          //无flag。StorageVersions的默认值。
-}
+    k8s.io/kubernetes/pkg/kubeapiserver/options/authentication.go
 
-1.12APIEnablement字段
-     含义：打开或关闭哪些API资源，以获得一个最小集的API server，对正常的API server不需要该参数。
-     路径：k8s.io/kubernetes/pkg/kubeapiserver/options/api_enablement.go
-     定义：
-type APIEnablementOptions struct{
-     //map描述传递给apiserver的运行时参数。apis/<groupversion>key表示打开/关闭api version。apis/<groupversion>/<resource>表示打开/关闭api resource。api/all表示打开/关闭所有版本。api/legacy表示打开/关闭legacy版本。什么是legacy版本？这个参数怎么用？
-     //flag："--runtime-config=map[]"。
-     RuntimeConfig utilflag.ConfigurationMap
-}
-//k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/flag/configuration_map.go
-type ConfigurationMap map[string]string
+定义：
 
-1.13AllowPrivileged字段
-     flag："--allow-privileged=false"。是否允许特权容器。
+    type BuiltInAuthenticationOptions struct{ 
+        Anonymous       *AnonymousAuthenticationOptions
+        AnyToken        *AnyTokenAuthenticationOptions
+        BootstrapToken  *BootstrapTokenAuthenticationOptions
+        ClientCert      *genericoptions.ClientCertAuthenticationOptions
+        Keystone        *KeystoneAuthenticationOptions
+        OIDC            *OIDCAuthenticationOptions
+        PasswordFile    *PasswordFileAuthenticationOptions
+        RequestHeader   *genericoptions.RequestHeaderAuthenticationOptions
+        ServiceAccounts *ServiceAccountAuthenticationOptions
+        TokenFile       *TokenFileAuthenticationOptions
+        WebHook         *WebHookAuthenticationOptions
+    }
 
-1.14EnableLogsHandler字段
-     flag："--enable-logs-handler=true"。如果为true，为apiserver logs安装一个/logs 处理器。默认为true。是否是指访问path中有/logspath？
+    //匿名认证
+    type AnonymousAuthenticationOptions struct{
+        Allow bool                        //此处flag："--anonymous-auth=true"。是否允许匿名请求apiserver的安全端口。匿名请求是指没有被其他身份验证方法拒绝的请求，apiserver会为这样的请求赋予用户名：system:anonymous和用户group：system:unauthenticated。这个请求将继续流向后面的环节：authorization和admission-control。后面可能会修改该默认值，即如果授权策略模式是AlwaysAllow，则修改该值为false。
+    }
 
-1.15EventTTL字段
-     flag："--event-ttl=1h0m0s"。
+    //允许任意token，即insecure方式。
+    type AnyTokenAuthenticationOptions struct{
+        Allow bool                        //flag："--insecure-allow-any-token=false"。如果设置该参数，server将是insecure。运行任意token，并从token "username/group1,group2"中解析用户信息。
+    }
 
-1.16KubeletConfig字段
-     路径：k8s.io/kubernetes/pkg/kubelet/client/kubelet_client.go
-     定义：
-type KubeletClientConfig struct{
-     Port uint                                     //flag："--kubelet-port=10250"。 kubelet server的默认端口。该参数已经被标记弃用，未来会被移除。
-     ReadOnlyPort uint                      //flag："--kubelet-read-only-port=10255"。kubelet暴露的只读端口。目前heapster只能通过这个端口去监控状态，未来如果heapster能使用SSL endpoint方式，则将移除这个端口。所以现在该端口的usage说明为：deprecated，但是flag并没有MarkDeprecated。
-     EnableHttps bool                        //flag："--kubelet-https=true"。kubelet连接使用https。
-     PreferredAddressTypes []string   //flag："--kubelet-preferred-address-types=[Hostname InternalDNS InternalIP ExternalDNS ExternalIP] "。用于kubelet连接的首先NodeAddressTypes。从Node.NodeStatus.Addresses中选择一个地址。这5种类型表示什么含义？
+    //Bootstrap前端框架认证
+    type BootstrapTokenAuthenticationOptions struct{
+        Allow bool                        //flag："--experimental-bootstrap-token-auth=false"。允许"kube-system" namespace中的"boostrap.kubernetes.io/token"类型secrets用于TLS bootstrapping认证。
+    }
 
-     restclient.TLSClientConfig           //TLS配置
-     BearerToken string                     //无flag。服务端需要Bearer认证。
-     HTTPTimeout time.Duration       //flag："--kubelet-timeout=5s"。kubelet的超时时间。
-     Dial utilnet.DialFunc                   //无flag。为客户端定制的dialer。
-}
-     restclient.TLSClientConfig参数的定义：
-          路径：k8s.io/kubernetes/vendor/k8s.io/client-go/rest/config.go
-type TLSClientConfig struct{
-     Insecure bool                             //无flag。不验证tls，仅用于测试。
-     ServerName string                     //无flag。该参数被传给server SNI，并在client端使用以检查服务器证书。如果该参数为空，则使用server hostname。
-     CertFile string                            //TLS客户端证书。对应的flag是："--kubelet-client-certificate"。默认为""。
-     KeyFile string                             //flag："--kubelet-client-key="。TLS客户端秘钥（包括公钥和私钥）。
-     CAFile string                              //flag："--kubelet-certificate-authority="。TLS CA证书。
-     CertData []byte                          //无flag。优先于CertFile。
-     KeyData []byte                           //无flag。优先于KeyFile。
-     CAData []byte                            //无flag。优先于CAFile。
-}
-     Dial参数的定义：
-          路径：k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/net/http.go
-type DialFunc func(net, addr string) (net.Conn, error)
+    //客户端认证
+    //k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/server/options/authentication.go
+    type ClientCertAuthenticationOptions struct{
+        ClientCA string                   //flag："--client-ca-file="。CA证书用于验证客户端证书。
+    }
 
-1.17KubernetesServiceNodePort字段
-     flag："--kubernetes-service-node-port=0"。如果设置了该参数，表示service是NodePort类型，nodePort为该值。如果是0，表示service是ClusterIP类型。
+    //keystone认证
+    type KeystoneAuthenticationOptions struct{
+        URL    string                     //flag："--experimental-keystore-url="。激活keystore认证插件。
+        CAFile string                     //flag："--experimental-keystore-ca-file="。keystore使用的ca证书，用于认证keystore的服务端证书。如果未设置，则使用host的CA。
+    }
 
-1.18MasterCount字段
-     flag："--apiserver-count=1"。master的个数。
+    //OpenID认证
+    type OIDCAuthenticationOptions struct{
+        CAFile        string              //flag："--oidc-ca-file="。ca证书用于认证OpenID server证书，如果未设置，则使用host root CA。
+        ClientID      string              //flag："--oidc-client-id="。client id用于OpenID连接client。如果设置了"--oidc-issuer-url"，该参数也必须设置。
+        IssuerURL     string              //flag："--oidc-issuer-url="。OpenID issuer的URL，仅支持https。如果设置了，用于验证OIDC JSON Web Token（JWT）。
+        UsernameClaim string              //flag："--oidc-username-claim=sub"。OpenID claim用作用户名。注意，除了默认值（'sub'）之外的claim并不保证是唯一和不可变的。这个参数是实验性的。
+        GroupsClaim   string              //flag："--oidc-groups-claim="。用户组。这个参数是实验性的。
+    }
 
-1.19MaxConnectionBytesPerSec字段
-     flag："--max-connection-bytes-per-sec=0"。限制每个用户连接的每秒最大字节数，当前仅用于长时间运行的请求。默认是0。连接的最大字节数是指从listen到accept的过程接收的字节数吗？为什么限制长时间运行的请求？长时间运行请求和短时间运行请求怎么区分？
+    //basic auth认证
+    type PasswordFileAuthenticationOptions struct{
+        BasicAuthFile string              //flag："--basic-auth-file="。如果设置了，允许使用http basic认证服务安全端口。 
+    }
 
-1.20ServiceClusterIPRange字段
-     flag："--service-cluster-ip-range={<nil> <nil>}"。cluster ip范围，CIDR格式。
+    //请求头认证
+    //k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/server/options/authentication.go
+    type RequestHeaderAuthenticationOptions struct{
+        UsernameHeaders     []string      //flag："--requestheader-username-headers=[]"。检查用户名的请求头列表。X-Remote-User是常量。
+        GroupHeaders        []string      //flag："--requestheader-group-headers=[]"。检查组的请求头列表。建议X-Remote-Group。
+        ExtraHeaderPrefixes []string      //flag："--requestheader-extra-headers-prefix=[]"。检查请求头前缀。建议X-Remote-Extra。
+        ClientCAFile        string        //flag："--requestheader-client-ca-file="。CA证书用于认证客户端证书。执行于"--requestheader-username-headers"指定的用户名认证之前。
+        AllowedNames        []string      //flag："--requestheader-allowed-names=[]"。客户端常用名称列表，允许提供"--requestheader-username-headers"指定的用户名。如果为空，任何客户端证书认证有效。
+    }
 
-1.21ServiceNodePortRange字段
-     flag："--service-node-port-range=[30000-32767]"。nodePort范围。
-     路径：k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/net/port_range.go
-     定义：
-type PortRange struct{
-     Base int    //默认30000
-     Size int     //默认2768
-}
+    //serviceaccount认证
+    type ServiceAccountAuthenticationOptions struct{
+        KeyFiles []string                 //此处flag："--service-account-key-file=[]"。keyfile验证serviceaccount token。后面可能会修改该默认值，即如果未设置，则使用"--tls-private-key-file"。
+        Lookup   bool                     //flag："--service-account-lookup=true"。如果为true，则serviceaccount token作为认证部分存在于etcd中。
+    }
 
-1.22SSHKeyfile字段
-     flag："--ssh-keyfile="。使用安全SSH代理登录到node时，使用这个keyfile。怎么用？
+    //token file认证
+    type TokenFileAuthenticationOptions struct{
+        TokenFile string                  //flag："--token-auth-file="。token认证访问安全端口使用的token文件。
+    }
 
-1.23SSHUser字段
-     flag："--ssh-user="。使用安全SSH代理登录到node时，使用这个user name。。怎么用？
-
-1.24ProxyClientCertFile字段
-     flag："--proxy-client-cert-file="。客户端证书，证明aggregator或kube-apiserver的身份（我理解客户端证书应该是给服务端证明客户端身份的，为什么这里确说是证明服务身份呢？为什么客户端证书要配置在服务端选项？），包括将请求代理到apiserver，和调用webhook准入控制插件，默认为""。预计该证书将包含"--requestheader-client-ca-file"指定的CA的签名。CA发布在kube-system namespace中的configmap："extersion-apiserver-authentication"中。从kube-aggregator调用的组件应该使用该CA来执行TLS验证。
-
-1.25ProxyClientKeyFile字段
-     flag："--proxy-client-key-file="。客户端秘钥（包括公钥和私钥）。配合ProxyClientCertFile使用。
-
-1.26EnableAggregatorRouting字段
-     flag："--enable-aggregator-routing=false"。打开aggregator路由请求到endpoints ip而不是到cluster ip。怎么使用？
+    //webhook认证
+    type WebHookAuthenticationOptions struct{
+        ConfigFile string                 //flag："--authentication-token-webhook-config-file="。webhook配置，以kubeconfig格式的token认证。API server将查询远程访问以确定bearer token的身份认证。
+        CacheTTL   time.Duration          //flag："--authentication-token-webhook-cache-ttl=2m0s"。从webhook token身份认证器缓存响应的时间。
+    }
 
 
+### 1.9 Authorization字段
+含义：
+
+    授权参数。
+
+路径：
+
+    k8s.io/kubernetes/pkg/kubeapiserver/options/authorization.go
+
+定义：
+
+    type BuildInAuthorizationOptions struct{
+        Mode                        string         //flag："--authorization-mode=AlwaysAllow"。授权插件列表。逗号分隔。
+        PolicyFile                  string         //flag："--authorization-policy-file="。授权策略文件，csv格式，和"--authorization-mode=ABAC"一起使用。
+        WebhookConfigFile           string         //flag："--authorization-webhook-config-file="。webhook配置文件，kubeconfig格式，和"--authorization-mode=Webhook"一起使用。
+        WebhookCacheAuthorizedTTL   time.Duration  //flag："--authorization-webhook-cache-authorized-ttl=5m0s"。从webhook授权器缓存授权的响应的时间。
+        WebhookCacheUnauthorizedTTL time.Duration  //flag："--authorization-webhook-cache-unauthorized-ttl=30s"。从webhook授权器缓存未授权的响应的时间。
+    }
+
+
+### 1.10 CloudProvider字段
+含义：
+
+    云提供商参数。
+
+路径：
+
+    k8s.io/kubernetes/pkg/kubeapiserver/options/cloudprovider.go
+
+定义：
+
+    type CloudProviderOptions struct{
+        CloudConfigFile string                     //flag："--cloud-config="。cloud provider配置文件。空表示没有配置文件。
+        CloudProvider   string                     //flag："--cloud-provider="。cloud provider。空表示没有provider。
+    }
+
+### 1.11 StorageSerialization字段
+含义：
+
+    存储到etcd中对象的group和Version信息。
+
+路径：
+
+    k8s.io/kubernetes/pkg/kubeapiserver/options/storage_versions.go
+
+定义：
+
+    type StorageSerializationOptions struct{
+        //格式：group1/version1,gourp2/version2,...。如果对象从一个group移到另一个group，可能指定格式：group1=group2/v1beta1,group3/v1beta1.
+        //默认来自KUBE_API_VERSIONS环境变量的所有已经注册组的所有首选版本。
+        //flag："--storage-versions=admission.k8s.io/v1alpha1,admissionregistration.k8s.io/v1alpha1,apps/v1beta1,authentication.k8s.io/v1,authorization.k8s.io/v1,autosacling/v1,batch/v1,certificates.k8s.io/v1beta1,componentconfig/v1alpha1,extensions/v1beta1,federation/v1beta1,imagepolicy.k8s.io/v1alpha1,networking.k8s.io/v1,policy/v1beta1,rbac.authorization.k8s.io/v1beta1,settings.k8s.io/v1alpha1,storage.k8s.io/v1,v1 "。
+        StorageVersions        string
+        DefaultStorageVersions string          //无flag。StorageVersions的默认值。
+    }
+
+### 1.12 APIEnablement字段
+含义：
+
+    打开或关闭哪些API资源，以获得一个最小集的API server，对正常的API server不需要该参数。
+
+路径：
+
+    k8s.io/kubernetes/pkg/kubeapiserver/options/api_enablement.go
+
+定义：
+
+    type APIEnablementOptions struct{
+        //apis/<groupversion>key表示打开/关闭api version。apis/<groupversion>/<resource>表示打开/关闭api resource。api/all表示打开/关闭所有版本。api/legacy表示打开/关闭legacy版本，即/api。flag："--runtime-config=map[]"。
+        RuntimeConfig utilflag.ConfigurationMap
+    }
+    //k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/flag/configuration_map.go
+    type ConfigurationMap map[string]string
+
+### 1.13 AllowPrivileged字段
+flag："--allow-privileged=false"。是否允许特权容器。
+
+### 1.14 EnableLogsHandler字段
+flag："--enable-logs-handler=true"。如果为true，为apiserver logs安装一个/logs 处理器。默认为true。
+
+### 1.15 EventTTL字段
+flag："--event-ttl=1h0m0s"。
+
+### 1.16 KubeletConfig字段
+含义：
+
+    访问kubelet的配置参数。
+
+路径：
+
+    k8s.io/kubernetes/pkg/kubelet/client/kubelet_client.go
+
+定义：
+
+    type KubeletClientConfig struct{
+        Port                  uint                //flag："--kubelet-port=10250"。 kubelet server的默认端口。该参数已经被标记弃用，未来会被移除。
+        ReadOnlyPort          uint                //flag："--kubelet-read-only-port=10255"。kubelet暴露的只读端口。目前heapster只能通过这个端口去监控状态，未来如果heapster能使用SSL endpoint方式，则将移除这个端口。所以现在该端口的usage说明为：deprecated，但是flag并没有MarkDeprecated。
+        EnableHttps           bool                //flag："--kubelet-https=true"。kubelet连接使用https。
+        PreferredAddressTypes []string            //flag："--kubelet-preferred-address-types=[Hostname InternalDNS InternalIP ExternalDNS ExternalIP] "。用于kubelet连接的首先NodeAddressTypes。从Node.NodeStatus.Addresses中选择一个地址。
+
+        restclient.TLSClientConfig                //TLS配置
+        BearerToken           string              //无flag。服务端需要Bearer认证。
+        HTTPTimeout           time.Duration       //flag："--kubelet-timeout=5s"。kubelet的超时时间。
+        Dial                  utilnet.DialFunc    //无flag。为客户端定制的dialer。
+    }
+
+    //restclient.TLSClientConfig参数的定义：
+    //路径：k8s.io/kubernetes/vendor/k8s.io/client-go/rest/config.go
+    type TLSClientConfig struct{
+        Insecure bool                             //无flag。不验证tls，仅用于测试。
+        ServerName string                         //无flag。该参数被传给server SNI，并在client端使用以检查服务器证书。如果该参数为空，则使用server hostname。
+        CertFile string                           //TLS客户端证书。对应的flag是："--kubelet-client-certificate"。默认为""。
+        KeyFile string                            //flag："--kubelet-client-key="。TLS客户端秘钥（包括公钥和私钥）。
+        CAFile string                             //flag："--kubelet-certificate-authority="。TLS CA证书。
+        CertData []byte                           //无flag。优先于CertFile。
+        KeyData []byte                            //无flag。优先于KeyFile。
+        CAData []byte                             //无flag。优先于CAFile。
+    }
+
+    //Dial参数的定义：
+    //路径：k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/net/http.go
+    type DialFunc func(net, addr string) (net.Conn, error)
+
+### 1.17 KubernetesServiceNodePort字段
+flag："--kubernetes-service-node-port=0"。如果设置了该参数，表示service是NodePort类型，nodePort为该值。如果是0，表示service是ClusterIP类型。
+
+### 1.18 MasterCount字段
+flag："--apiserver-count=1"。master的个数。
+
+### 1.19 MaxConnectionBytesPerSec字段
+flag："--max-connection-bytes-per-sec=0"。限制每个用户连接的每秒最大字节数，当前仅用于长时间运行的请求。默认是0。
+
+### 1.20 ServiceClusterIPRange字段
+flag："--service-cluster-ip-range={<nil> <nil>}"。cluster ip范围，CIDR格式。
+
+### 1.21 ServiceNodePortRange字段
+flag："--service-node-port-range=[30000-32767]"。nodePort范围。
+
+PortRange定义：
+
+    //路径：k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/util/net/port_range.go
+    type PortRange struct{
+        Base int     //默认30000
+        Size int     //默认2768
+    }
+
+### 1.22 SSHKeyfile字段
+flag："--ssh-keyfile="。使用安全SSH代理登录到node时，使用这个keyfile。
+
+### 1.23 SSHUser字段
+flag："--ssh-user="。使用安全SSH代理登录到node时，使用这个user name。
+
+### 1.24 ProxyClientCertFile字段
+flag："--proxy-client-cert-file="。客户端证书，证明aggregator或kube-apiserver的身份（我理解客户端证书应该是给服务端证明客户端身份的，为什么这里确说是证明服务身份呢？为什么客户端证书要配置在服务端选项？），包括将请求代理到apiserver，和调用webhook准入控制插件，默认为""。预计该证书将包含"--requestheader-client-ca-file"指定的CA的签名。CA发布在kube-system namespace中的configmap："extersion-apiserver-authentication"中。从kube-aggregator调用的组件应该使用该CA来执行TLS验证。
+
+### 1.25 ProxyClientKeyFile字段
+flag："--proxy-client-key-file="。客户端秘钥（包括公钥和私钥）。配合ProxyClientCertFile使用。
+
+### 1.26 EnableAggregatorRouting字段
+flag："--enable-aggregator-routing=false"。打开aggregator路由请求到endpoints ip而不是到cluster ip。
 
 
 
