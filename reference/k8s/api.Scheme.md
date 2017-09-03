@@ -676,7 +676,7 @@ api.Scheme是"/api/v1"中使用的Scheme。api.Scheme是Copier接口类型（Cop
     }
     
     //增加conversion函数：
-    func DefaultEmbeddedConversions() \[\]interface{}{
+    func DefaultEmbeddedConversions() []interface{}{
         return []interface{}{
             Convert_runtime_Object_To_runtime_RawExtension,
             Convert_runtime_RawExtension_To_runtime_Object,
