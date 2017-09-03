@@ -34,9 +34,8 @@
 
 实参：
 
-    runOptions参数传入的是前面创建好的ServerRunOptions对象，stopCh参数传入的是一个NeverStop channel。
     runOptions：前面创建好的ServerRunOptions对象。
-    stopCh：NeverStop channel。var NeverStop <-chan struct{} = make(chan struct{})，作用是让服务器一直运行，不停止。
+    stopCh：传入的是一个NeverStop channel。var NeverStop <-chan struct{} = make(chan struct{})，作用是让服务器一直运行，不停止。
 
 定义：
 
@@ -53,19 +52,20 @@
             return err
         }
 
-        //
+        //创建扩展API配置。
         apiExtensionsConfig, err:=createAPIExtensionsConfig(*kubeAPIServerConfig.GenericConfig, runOptions)
         if err!=nil {
             return err
         }
      
-    
+        //创建扩展API服务器。
         apiExtensionsServer, err:=createAPIExtensionsServer(apiExtensionsConfig, genericapiserver.EmptyDelegate)
         if err!=nil {
             return err
         }
      
     
+        //创建API服务器。
         kubeAPIServer,err := CreateKubeAPIServer(kubeAPIServerConfig, apiExtensionsServer.GenericAPIServer, sharedInformers, apiExtensionsConfig.CRDRESTOptionsGetter)
         if err!=nil {
             return err
