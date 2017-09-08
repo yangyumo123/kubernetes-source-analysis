@@ -14,8 +14,10 @@ kube-scheduler是kubernetes集群中的调度器，经过预选算法和优选�
 
 ### Predicates Policies
 优选算法使用Predicates Policies来过滤掉不符合条件的Nodes。并发启动多个goroutine，对每个node执行Predicates Policies遍历，看是否满足Predicates Policies，若有一个Policy不满足，则直接淘汰。
+
 可以在kube-scheduler启动参数中添加"--policy-config-file"来指定要运用的Policies集合，这个配置文件格式如下：
-{
+
+    {
     "kind": "Policy",
     "apiVersion": "v1",
     "predicates": [
@@ -29,8 +31,7 @@ kube-scheduler是kubernetes集群中的调度器，经过预选算法和优选�
     "priorities: [
         ...
     ]
-
-}
+    }
 
 
 ### Priorities Policies
