@@ -27,7 +27,7 @@ kube-scheduler运行
         //创建共享信息库。apiserver中已经介绍了。这里共享信息库的主要作用是把与scheduler有关的对象信息添加进来，以便scheduler操作。
         informerFactory := informers.NewSharedInformerFactory(kubecli, 0)
 
-        //创建pod的信息。这里的pod不包括静态pod。
+        //创建pod的信息。这里的pod不包括终止状态pod。
         podInformer := factory.NewPodInformer(kubecli, 0)
 
         //创建调度器。
