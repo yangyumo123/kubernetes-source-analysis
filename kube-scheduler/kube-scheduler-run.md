@@ -668,6 +668,78 @@ kube-scheduler运行
         return host,err
     }
 
+
+## ScheduleAlgorithm接口
+任何调度算法都要实现ScheduleAlgorithm接口，即实现Schdeule方法。
+
+    //k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/scheduler_interface.go
+    type ScheduleAlgorithm interface{
+        Schedule(*v1.Pod, NodeLister) (selectedMachine string, err error)    //调度算法
+        Predicates() map[string]FitPredicate                                 //用于测试，预选函数的map。
+        Prioritizers() []PriorityConfig                                      //用于测试，优选配置的slice。
+    }
+
+## genericScheduler.Schedule
+含义：
+
+    执行预选，优选算法。genericScheduler要实现ScheduleAlgorithm接口。
+
+路径：
+
+    k8s.io/kubernetes/plugin/pkg/scheduler/core/generic_scheduler.go
+
+定义：
+
+    func (g *genericScheduler) Schedule(pod *v1.Pod){
+        //记录namespace/name，当前时间。
+        trace:=utiltrace.New(fmt.Sprintf("Scheduling %s/%s", pod.Namespace, pod.Name))
+        defer trace.LogIfLong(100 * time.Millisecond)
+
+        //从缓存中获取nodes。
+        nodes, err:=nodeLister.List()
+        if err!=nil{
+            return "", err
+        }
+        if len(nodes)==0{
+            return "", ErrNoNodesAvailable
+        }
+
+        //更新当前缓存中node name
+        err=g.cache.UpdateNodeNameToInfoMap(g.cachedNodeInfoMap)
+        if err!=nil{
+            return "",err
+        }
+
+        trace.Step("Computing predicates")
+        //计算预选算法
+	    filteredNodes, failedPredicateMap, err := findNodesThatFit(pod, g.cachedNodeInfoMap, nodes, g.predicates, g.extenders, g.predicateMetaProducer, g.equivalenceCache)
+	    if err != nil {
+		    return "", err
+	    }
+
+	    if len(filteredNodes) == 0 {
+		    return "", &FitError{
+			    Pod:              pod,
+			    FailedPredicates: failedPredicateMap,
+		    }
+	    }
+
+	    trace.Step("Prioritizing")
+        //计算优选算法。
+	    metaPrioritiesInterface := g.priorityMetaProducer(pod, g.cachedNodeInfoMap)
+	    priorityList, err := PrioritizeNodes(pod, g.cachedNodeInfoMap, metaPrioritiesInterface, g.prioritizers, filteredNodes, g.extenders)
+	    if err != nil {
+		    return "", err
+	    }
+
+	    trace.Step("Selecting host")
+        //多个优选结果，随机选择一个。
+	    return g.selectHost(priorityList)
+
+    }
+
+
+
 **调度算法sched.config.Algorithm.Schedule会执行预选算法和优选算法，这个在后面的章节中介绍。**
 
 _______________________________________________________________________
