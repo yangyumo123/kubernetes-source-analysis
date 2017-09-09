@@ -85,13 +85,51 @@ SchedulerServer结构体拥有运行一个Scheduler的所有内容和参数。
 定义：
 
     func NewSchedulerServer() *SchedulerServer {
-        versioned := &v1alpha1.KubeSchedulerConfiguration{}
-        api.Scheme.Default(versioned)
-        cfg := componentconfig.KubeSchedulerConfiguration{}
-        api.Scheme.Convert(versioned, &cfg, nil)
-        cfg.LeaderElection.LeaderElect = true
+        versioned := &v1alpha1.KubeSchedulerConfiguration{}   //创建v1alpha1版本的KubeSchedulerConfiguration配置对象，结构体为空。
+        api.Scheme.Default(versioned)                         //设置versioned对象的默认值。
+        cfg := componentconfig.KubeSchedulerConfiguration{}   //内部无版本的KubeSchedulerConfiguration配置对象，结构体为空。
+        api.Scheme.Convert(versioned, &cfg, nil)              //将versioned转换为cfg。
+        cfg.LeaderElection.LeaderElect = true                 //打开leader选举开关。
         s := SchedulerServer{
-            KubeSchedulerConfiguration: cfg,
+            KubeSchedulerConfiguration: cfg,                  //创建SchedulerServer对象时只设置了KubeSchedulerConfiguration，并未设置master和kubeconfig，这两个参数是需要命令行flag传入的。
         }
         return &s
+    }
+
+### 1. api.Scheme.Default
+含义：
+
+    设置由参数传入的对象的默认值。怎么设置默认值，是根据scheme中的defaulterFuncs中注册的函数来设置的。
+
+路径：
+
+    k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/scheme.go
+
+定义：
+
+    func (s *Scheme)Default(src Object){
+        if fn, ok := s.defaulterFuncs[reflect.TypeOf(src)]; ok {
+            fn(src)
+        }
+    }
+
+### 2. api.Scheme.Convert
+含义：
+
+    将in转换为out。实际是调用schem中converter的Convert方法来实现版本之间的转换。
+
+路径：
+
+    k8s.io/kubernetes/vendor/k8s.io/apimachinery/pkg/runtime/scheme.go
+
+定义：
+
+    func (s *Scheme)Convert(in, out interface{}, context interface{}) error{
+        flags, meta := s.generateConvertMeta(in)
+        meta.Context = context
+        if flags == 0{
+            flags = conversion.AllowDifferentFieldTypeNames
+        }
+        return s.converter.Convert(in, out, flags, meta)
+
     }
