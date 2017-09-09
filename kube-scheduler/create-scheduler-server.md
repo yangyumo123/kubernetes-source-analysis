@@ -133,3 +133,7 @@ SchedulerServer结构体拥有运行一个Scheduler的所有内容和参数。
         return s.converter.Convert(in, out, flags, meta)
 
     }
+
+
+_______________________________________________________________________
+[[返回kube-scheduler/kube-scheduler.md]](./kube-scheduler.md) 

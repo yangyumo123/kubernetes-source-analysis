@@ -9,7 +9,7 @@ kube-scheduler 调度
 ## 目录
 1. [kube-scheduler原理](./kube-scheduler-introduce.md)
 2. [创建SchedulerServer](./create-scheduler-server.md)
-3. [kube-scheduler参数]()
+3. [kube-scheduler参数](./kube-scheduler-flag.md)
 4. [kube-scheduler预选算法]()
 5. [kube-scheduler优选算法]()
 

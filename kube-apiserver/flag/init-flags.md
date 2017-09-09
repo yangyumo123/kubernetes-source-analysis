@@ -54,7 +54,7 @@
     var logFlushFreq = pflag.Duration("log-flush-frequency", 5*time.Second, "Maximum number of seconds between log flushes")
 
     // func Set(name, value string) error {return CommandLine.Set(name,value)}   这里的CommandLine是Go原生的FlagSet。
-    // flag.Set()设置的是原生FlagSet的actual，即f.actual["logtostderr"] = flag，flag的值为true。并没有改变formal的值。
+    // flag.Set()设置的是原生FlagSet的actual，即f.actual["logtostderr"] = flag，flag的值为true。同时更新formal中的值。
     func init(){
         flag.Set("logtostderr", "true")     
     }
@@ -72,7 +72,7 @@
 ## 3. 解析命令行参数
 含义：
 
-    从命令行列表中解析出Flag，存入spf13/pflag包中的FlagSet的actual中。
+    从命令行列表中解析出Flag，存入spf13/pflag包中的FlagSet的actual中。同时更新formal相对应的Flag。
 
 路径：
 
