@@ -13,6 +13,7 @@ kube-scheduler 调度
 4. [kube-scheduler运行](./kube-scheduler-run.md)
 5. [kube-scheduler预选算法](./kube-scheduler-predicates.md)
 6. [kube-scheduler优选算法](./kube-scheduler-priorities.md)
+7. [kube-scheduler配置的默认DefaultProvider](./kube-scheduler-defaultProvider.md)
 
 
 _______________________________________________________________________
