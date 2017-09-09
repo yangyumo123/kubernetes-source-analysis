@@ -249,6 +249,7 @@ kube-scheduler预选算法
     }
 
 3. PodMatchNodeSelector
+
 含义：
 
     检查node上的标签是否配置Pod中定义的nodeSelector。
@@ -267,6 +268,7 @@ kube-scheduler预选算法
     }
 
 4. PodFitsHost
+
 含义：
 
     检查nodeName是否相同。
@@ -291,6 +293,7 @@ kube-scheduler预选算法
     }
 
 5. PodFitsHostPorts
+
 含义：
 
     检查是否匹配node的端口。
@@ -320,6 +323,7 @@ kube-scheduler预选算法
     }
 
 6. PodToleratesNodeTaints
+
 含义：
 
     检查宽容node的污点，这是1.6引入的新特性，和亲和相关。
@@ -342,6 +346,7 @@ kube-scheduler预选算法
     }
 
 7. CheckNodeMemoryPressurePredicate
+
 含义：
 
     检查内存压力情况。与服务级别QoS有关系。
@@ -369,6 +374,7 @@ kube-scheduler预选算法
     }
 
 8. CheckNodeDiskPressurePredicate
+
 含义：
 
     检查磁盘压力情况。
